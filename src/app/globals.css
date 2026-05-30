@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #081f5c;
+  --charcoal: #334eac;
+  --copper: #7096d1;
+  --sunlit: #7096d1;
+  --cream: #f9fcff;
+  --fog: #d0e3ff;
+  --mist: #e7f1ff;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-charcoal: var(--charcoal);
+  --color-copper: var(--copper);
+  --color-sunlit: var(--sunlit);
+  --color-cream: var(--cream);
+  --color-fog: var(--fog);
+  --color-mist: var(--mist);
+  --font-sans: var(--font-space-grotesk);
+  --font-serif: var(--font-newsreader);
+}
+
+body {
+  background: linear-gradient(180deg, #f9fcff 0%, #e7f1ff 45%, #d0e3ff 100%);
+  color: var(--ink);
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.page-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-frame::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 50%;
+  background: radial-gradient(circle at 20% 30%, rgba(112, 150, 209, 0.25), transparent 60%);
+  pointer-events: none;
+}
+
+.hero-grid {
+  background-image: linear-gradient(rgba(51, 78, 172, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 78, 172, 0.08) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at top, rgba(0, 0, 0, 0.9) 40%, transparent 75%);
+}
+
+.soft-shadow {
+  box-shadow: 0 30px 70px rgba(8, 31, 92, 0.18);
+}
+
+.glass-panel {
+  background: rgba(249, 252, 255, 0.8);
+  border: 1px solid rgba(51, 78, 172, 0.12);
+  box-shadow: 0 24px 48px rgba(8, 31, 92, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.panel-outline {
+  border: 1px solid rgba(51, 78, 172, 0.16);
+}
