@@ -111,6 +111,20 @@ const normalizeCandidate = (candidate: any): Candidate => ({
   photo_url: candidate.photo_url ?? null,
 });
 
+const mergeCandidateOverrides = (candidate: Candidate, override?: CandidateOverride) => {
+  if (!override) {
+    return candidate;
+  }
+
+  return {
+    ...candidate,
+    email: override.email ?? candidate.email,
+    phone_number: override.phone_number ?? candidate.phone_number,
+    manifesto: override.manifesto ?? candidate.manifesto,
+    photo_url: override.photo_url ?? candidate.photo_url,
+  };
+};
+
 export default function VoterPortal() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<VoterProfile | null>(null);
@@ -405,7 +419,7 @@ export default function VoterPortal() {
         const nextCandidates = ((data.candidates as Candidate[]) ?? []).map((candidate) => {
           const normalizedCandidate = normalizeCandidate(candidate);
           const override = overrides[normalizedCandidate.id];
-          return override ? { ...normalizedCandidate, ...override } : normalizedCandidate;
+          return mergeCandidateOverrides(normalizedCandidate, override);
         });
 
         setCandidates(nextCandidates);
@@ -1378,7 +1392,7 @@ export default function VoterPortal() {
                             <img
                               src={candidate.photo_url}
                               alt={candidate.name}
-                              className="h-44 w-full object-cover"
+                              className="h-44 w-full bg-white/70 object-contain p-2"
                             />
                           ) : (
                             <div className="flex h-44 items-center justify-center text-sm text-white/70">

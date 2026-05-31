@@ -15,8 +15,14 @@ type CandidateAuditFallback = {
   entity_id: string | null;
   metadata: {
     email?: string | null;
+    email_address?: string | null;
+    contact_email?: string | null;
     phone_number?: string | null;
+    phone?: string | null;
+    mobile_number?: string | null;
+    contact_phone?: string | null;
     manifesto?: string | null;
+    manifesto_url?: string | null;
     photo_url?: string | null;
   } | null;
   created_at: string;
@@ -139,9 +145,9 @@ export async function GET(request: Request) {
       id: candidate.id,
       election_id: candidate.election_id,
       name: candidate.name,
-      email: candidate.email ?? null,
-      phone_number: candidate.phone_number ?? null,
-      manifesto: candidate.manifesto ?? null,
+      email: candidate.email ?? candidate.email_address ?? candidate.contact_email ?? null,
+      phone_number: candidate.phone_number ?? candidate.phone ?? candidate.mobile_number ?? candidate.contact_phone ?? null,
+      manifesto: candidate.manifesto ?? candidate.manifesto_url ?? null,
       photo_url: await toSignedIfNeeded(supabase, candidate.photo_url ?? null),
     }))
   );
@@ -171,9 +177,10 @@ export async function GET(request: Request) {
         const metadata = fallback?.metadata ?? null;
         withSignedPhotos[index] = {
           ...candidate,
-          email: candidate.email ?? metadata?.email ?? null,
-          phone_number: candidate.phone_number ?? metadata?.phone_number ?? null,
-          manifesto: candidate.manifesto ?? metadata?.manifesto ?? null,
+          email: candidate.email ?? metadata?.email ?? metadata?.email_address ?? metadata?.contact_email ?? null,
+          phone_number:
+            candidate.phone_number ?? metadata?.phone_number ?? metadata?.phone ?? metadata?.mobile_number ?? metadata?.contact_phone ?? null,
+          manifesto: candidate.manifesto ?? metadata?.manifesto ?? metadata?.manifesto_url ?? null,
           photo_url: candidate.photo_url ?? (metadata?.photo_url ? metadata.photo_url : null),
         };
       }
