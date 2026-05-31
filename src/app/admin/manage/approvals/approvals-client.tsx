@@ -47,10 +47,12 @@ export default function ManageApprovalsClient() {
   const [photoUrlByRequest, setPhotoUrlByRequest] = useState<Record<string, string>>({});
   const [historyPhotoUrlByRequest, setHistoryPhotoUrlByRequest] = useState<Record<string, string>>({});
   const [adminComment, setAdminComment] = useState<Record<string, string>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!electionId) return;
     setError(null);
+    setRefreshing(true);
     try {
       const res = await fetch(`/api/admin/dashboard?electionId=${encodeURIComponent(electionId)}`, { cache: "no-store" });
       const data = await res.json();
@@ -77,6 +79,8 @@ export default function ManageApprovalsClient() {
       setPhotoUrlByRequest(Object.fromEntries(photoPairs));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRefreshing(false);
     }
   }, [electionId]);
 
@@ -176,6 +180,15 @@ export default function ManageApprovalsClient() {
 
       <div className="glass-panel rounded-2xl p-4 md:p-6">
         <div className="mb-4 flex gap-2">
+          {tab === "pending" ? (
+            <button
+              className="rounded-full border border-charcoal/25 bg-white px-4 py-2 text-sm font-semibold text-charcoal transition hover:bg-charcoal/5 disabled:opacity-60"
+              onClick={() => void load()}
+              disabled={refreshing}
+            >
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
+          ) : null}
           <button
             className={`rounded-full px-3 py-1 text-sm ${tab === "pending" ? "bg-charcoal text-cream" : "bg-white/80 text-charcoal border border-charcoal/10"}`}
             onClick={() => setTab("pending")}

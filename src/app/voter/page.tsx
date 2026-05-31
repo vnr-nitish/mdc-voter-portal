@@ -536,6 +536,26 @@ export default function VoterPortal() {
     return () => clearInterval(interval);
   }, [sessionRow]);
 
+  // Realtime subscription: if admin terminates this session (is_active -> false), end it immediately.
+  useEffect(() => {
+    if (!sessionRow?.id) return;
+    const sub = supabaseClient
+      .from(`sessions:id=eq.${sessionRow.id}`)
+      .on('UPDATE', (payload: any) => {
+        const newRow = payload.new as SessionRow | null;
+        if (newRow && newRow.is_active === false) {
+          void endSession();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        sub.unsubscribe();
+      } catch {}
+    };
+  }, [sessionRow?.id]);
+
   useEffect(() => {
     if (!showVoteModal) {
       return;
