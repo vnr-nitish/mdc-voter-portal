@@ -1283,7 +1283,8 @@ export default function VoterPortal() {
                 Election: {selectedElection?.election?.title ?? "Untitled election"}
               </div>
               <button
-                className="rounded-full border border-charcoal/25 bg-white px-4 py-2 text-sm font-semibold text-charcoal"
+                type="button"
+                className="cursor-pointer rounded-full border border-charcoal/25 bg-white px-4 py-2 text-sm font-semibold text-charcoal"
                 onClick={async () => {
                   const authUser = (await supabaseClient.auth.getUser()).data.user;
                   const res = await fetch("/api/voter/resolve", {

@@ -11,18 +11,30 @@ type CandidateRow = {
   manifesto: string | null;
 };
 
+const readCandidateEmail = (candidate: Record<string, unknown>) =>
+  (candidate.email ?? candidate.email_address ?? candidate.email_id ?? candidate.emailid ?? candidate.contact_email ?? null) as string | null;
+
+const readCandidatePhone = (candidate: Record<string, unknown>) =>
+  (candidate.phone_number ?? candidate.phone ?? candidate.phone_no ?? candidate.phone_number1 ?? candidate.mobile_number ?? candidate.mobileNumber ?? candidate.mobilenumber ?? candidate.contact_phone ?? candidate.contact_number ?? null) as string | null;
+
 type CandidateAuditFallback = {
   entity_id: string | null;
   metadata: {
     email?: string | null;
     email_address?: string | null;
+    email_id?: string | null;
+    emailid?: string | null;
     contact_email?: string | null;
     phone_number?: string | null;
     phone?: string | null;
+    phone_no?: string | null;
     mobile_number?: string | null;
+    mobilenumber?: string | null;
     contact_phone?: string | null;
+    contact_number?: string | null;
     manifesto?: string | null;
     manifesto_url?: string | null;
+    manifesto_text?: string | null;
     photo_url?: string | null;
   } | null;
   created_at: string;
@@ -145,9 +157,9 @@ export async function GET(request: Request) {
       id: candidate.id,
       election_id: candidate.election_id,
       name: candidate.name,
-      email: candidate.email ?? candidate.email_address ?? candidate.contact_email ?? null,
-      phone_number: candidate.phone_number ?? candidate.phone ?? candidate.mobile_number ?? candidate.contact_phone ?? null,
-      manifesto: candidate.manifesto ?? candidate.manifesto_url ?? null,
+      email: readCandidateEmail(candidate),
+      phone_number: readCandidatePhone(candidate),
+      manifesto: candidate.manifesto ?? candidate.manifesto_url ?? candidate.manifesto_text ?? null,
       photo_url: await toSignedIfNeeded(supabase, candidate.photo_url ?? null),
     }))
   );
@@ -177,10 +189,25 @@ export async function GET(request: Request) {
         const metadata = fallback?.metadata ?? null;
         withSignedPhotos[index] = {
           ...candidate,
-          email: candidate.email ?? metadata?.email ?? metadata?.email_address ?? metadata?.contact_email ?? null,
+          email:
+            candidate.email ??
+            metadata?.email ??
+            metadata?.email_address ??
+            metadata?.email_id ??
+            metadata?.emailid ??
+            metadata?.contact_email ??
+            null,
           phone_number:
-            candidate.phone_number ?? metadata?.phone_number ?? metadata?.phone ?? metadata?.mobile_number ?? metadata?.contact_phone ?? null,
-          manifesto: candidate.manifesto ?? metadata?.manifesto ?? metadata?.manifesto_url ?? null,
+            candidate.phone_number ??
+            metadata?.phone_number ??
+            metadata?.phone ??
+            metadata?.phone_no ??
+            metadata?.mobile_number ??
+            metadata?.mobilenumber ??
+            metadata?.contact_phone ??
+            metadata?.contact_number ??
+            null,
+          manifesto: candidate.manifesto ?? metadata?.manifesto ?? metadata?.manifesto_url ?? metadata?.manifesto_text ?? null,
           photo_url: candidate.photo_url ?? (metadata?.photo_url ? metadata.photo_url : null),
         };
       }
