@@ -539,19 +539,27 @@ export default function VoterPortal() {
   // Realtime subscription: if admin terminates this session (is_active -> false), end it immediately.
   useEffect(() => {
     if (!sessionRow?.id) return;
-    const sub = supabaseClient
-      .from(`sessions:id=eq.${sessionRow.id}`)
-      .on('UPDATE', (payload: any) => {
-        const newRow = payload.new as SessionRow | null;
-        if (newRow && newRow.is_active === false) {
-          void endSession();
+    const channelName = `public:sessions:id=eq.${sessionRow.id}`;
+    const channel = supabaseClient
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionRow.id}` },
+        (payload: any) => {
+          const newRow = payload?.new as SessionRow | null;
+          if (newRow && newRow.is_active === false) {
+            void endSession();
+          }
         }
-      })
+      )
       .subscribe();
 
     return () => {
       try {
-        sub.unsubscribe();
+        // unsubscribe/remove the channel
+        channel.unsubscribe();
+        // also remove from client just in case
+        try { supabaseClient.removeChannel(channel); } catch {}
       } catch {}
     };
   }, [sessionRow?.id]);
