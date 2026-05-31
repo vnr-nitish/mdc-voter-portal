@@ -564,6 +564,38 @@ export default function VoterPortal() {
     };
   }, [sessionRow?.id]);
 
+  // Polling fallback: some environments may not deliver realtime events reliably.
+  // Poll the session row every 2s and end the session immediately if `is_active` turns false.
+  useEffect(() => {
+    if (!sessionRow?.id) return;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from('sessions')
+          .select('id, is_active')
+          .eq('id', sessionRow.id)
+          .maybeSingle();
+        if (error) return;
+        if (cancelled) return;
+        if (data && data.is_active === false) {
+          void endSession();
+        }
+      } catch {
+        // ignore transient errors
+      }
+    };
+
+    const id = setInterval(check, 2000);
+    // run immediately as well
+    void check();
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [sessionRow?.id]);
+
   useEffect(() => {
     if (!showVoteModal) {
       return;
