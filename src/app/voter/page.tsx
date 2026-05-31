@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
-import { env } from "@/lib/env";
 
 type VoterProfile = {
   id: string;
@@ -704,7 +703,7 @@ export default function VoterPortal() {
     await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: new URL("/voter", env.siteUrl).toString(),
+        redirectTo: `${window.location.origin}/voter`,
       },
     });
   };
