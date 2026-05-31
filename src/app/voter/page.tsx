@@ -103,6 +103,13 @@ const readCandidateOverrides = (): Record<string, CandidateOverride> => {
     return {};
   }
 };
+const normalizeCandidate = (candidate: any): Candidate => ({
+  ...candidate,
+  email: candidate.email ?? candidate.email_address ?? candidate.contact_email ?? null,
+  phone_number: candidate.phone_number ?? candidate.phone ?? candidate.mobile_number ?? candidate.contact_phone ?? null,
+  manifesto: candidate.manifesto ?? null,
+  photo_url: candidate.photo_url ?? null,
+});
 
 export default function VoterPortal() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -396,8 +403,9 @@ export default function VoterPortal() {
 
         const overrides = readCandidateOverrides();
         const nextCandidates = ((data.candidates as Candidate[]) ?? []).map((candidate) => {
-          const override = overrides[candidate.id];
-          return override ? { ...candidate, ...override } : candidate;
+          const normalizedCandidate = normalizeCandidate(candidate);
+          const override = overrides[normalizedCandidate.id];
+          return override ? { ...normalizedCandidate, ...override } : normalizedCandidate;
         });
 
         setCandidates(nextCandidates);
@@ -839,7 +847,8 @@ export default function VoterPortal() {
   };
 
   const handleVoteSubmit = async () => {
-    if (!profile || !selectedElectionId || !selectedCandidate || !voteReason.trim()) {
+    const trimmedReason = voteReason.trim();
+    if (!profile || !selectedElectionId || !selectedCandidate || trimmedReason.length < 10) {
       return;
     }
 
@@ -864,7 +873,7 @@ export default function VoterPortal() {
           voterId: profile.id,
           electionId: selectedElectionId,
           candidateId: selectedCandidate,
-          reason: voteReason.trim(),
+          reason: trimmedReason,
         }),
       });
 
@@ -1427,7 +1436,7 @@ export default function VoterPortal() {
                 <label className="mt-5 block text-sm font-semibold text-ink">Reason</label>
                 <textarea
                   className="mt-2 w-full rounded-2xl border border-charcoal/20 bg-white px-4 py-3 text-sm text-ink placeholder:text-ink/45"
-                  placeholder="Write your reason here..."
+                  placeholder="Write at least 10 characters..."
                   rows={5}
                   value={voteReason}
                   onChange={(event) => setVoteReason(event.target.value)}
@@ -1441,7 +1450,7 @@ export default function VoterPortal() {
                     !selectedElection?.is_verified ||
                     selectedElection?.has_voted ||
                     !selectedCandidate ||
-                    !voteReason.trim() ||
+                    voteReason.trim().length < 10 ||
                     busyAction === "vote"
                   }
                 >
