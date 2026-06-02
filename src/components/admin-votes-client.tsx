@@ -28,12 +28,19 @@ type VoteRow = {
   } | null;
 };
 
+type VoterRow = {
+  id?: string | null;
+  registration_number?: string | null;
+  has_voted?: boolean | null;
+};
+
 type Props = {
   electionId: string;
 };
 
 export default function AdminVotesClient({ electionId }: Props) {
   const [votes, setVotes] = useState<VoteRow[]>([]);
+  const [voters, setVoters] = useState<VoterRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [candidateFilter, setCandidateFilter] = useState("all");
@@ -56,6 +63,7 @@ export default function AdminVotesClient({ electionId }: Props) {
         if (!res.ok) throw new Error(data.error || "Failed");
         if (mounted) {
           setVotes((data.votes || []) as VoteRow[]);
+          setVoters((data.voters || []) as VoterRow[]);
         }
       } catch (err) {
         if (mounted) {
@@ -131,10 +139,11 @@ export default function AdminVotesClient({ electionId }: Props) {
 
   const stats = useMemo(() => {
     const totalPoints = visibleVotes.reduce((sum, vote) => sum + (vote.points ?? vote.voter?.vote_points ?? 0), 0);
-    const uniqueVoters = new Set(visibleVotes.map((vote) => vote.voter?.registration_number).filter(Boolean)).size;
     const uniqueCandidates = new Set(visibleVotes.map((vote) => vote.candidate?.name).filter(Boolean)).size;
-    return { totalPoints, uniqueVoters, uniqueCandidates };
-  }, [visibleVotes]);
+    const registeredVoters = voters.length;
+    const participatedVoters = voters.filter((voter) => voter.has_voted).length;
+    return { totalPoints, uniqueCandidates, registeredVoters, participatedVoters };
+  }, [visibleVotes, voters]);
 
   const candidateTotals = useMemo(() => {
     const totals = new Map<string, { name: string; votes: number; points: number }>();
@@ -215,12 +224,12 @@ export default function AdminVotesClient({ electionId }: Props) {
       <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Votes</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{votes.length}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Registered Voters</p>
+            <p className="mt-1 text-2xl font-semibold text-ink">{stats.registeredVoters}</p>
           </div>
           <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Voters</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{stats.uniqueVoters}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Participated Voters</p>
+            <p className="mt-1 text-2xl font-semibold text-ink">{stats.participatedVoters}</p>
           </div>
           <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Candidates</p>
