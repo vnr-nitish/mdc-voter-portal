@@ -148,8 +148,7 @@ export async function GET(request: Request) {
       .from("votes")
       .select(voteSelect)
       .eq("election_id", selectedElectionId)
-      .order("created_at", { ascending: false })
-      .limit(25);
+      .order("created_at", { ascending: false });
 
     if (!error) {
       votes = data ?? [];
