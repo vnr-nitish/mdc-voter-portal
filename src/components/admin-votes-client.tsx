@@ -48,6 +48,7 @@ export default function AdminVotesClient({ electionId }: Props) {
   const [domainFilter, setDomainFilter] = useState("all");
   const [schoolFilter, setSchoolFilter] = useState("all");
   const [stayFilter, setStayFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"responses" | "analytics">("responses");
 
   useEffect(() => {
     if (!electionId) return;
@@ -138,17 +139,17 @@ export default function AdminVotesClient({ electionId }: Props) {
   }, [votes, searchTerm, candidateFilter, yearFilter, domainFilter, schoolFilter, stayFilter]);
 
   const stats = useMemo(() => {
-    const totalPoints = visibleVotes.reduce((sum, vote) => sum + (vote.points ?? vote.voter?.vote_points ?? 0), 0);
-    const uniqueCandidates = new Set(visibleVotes.map((vote) => vote.candidate?.name).filter(Boolean)).size;
+    const totalPoints = votes.reduce((sum, vote) => sum + (vote.points ?? vote.voter?.vote_points ?? 0), 0);
+    const uniqueCandidates = new Set(votes.map((vote) => vote.candidate?.name).filter(Boolean)).size;
     const registeredVoters = voters.length;
     const participatedVoters = voters.filter((voter) => voter.has_voted).length;
     return { totalPoints, uniqueCandidates, registeredVoters, participatedVoters };
-  }, [visibleVotes, voters]);
+  }, [votes, voters]);
 
   const candidateTotals = useMemo(() => {
     const totals = new Map<string, { name: string; votes: number; points: number }>();
 
-    visibleVotes.forEach((vote) => {
+    votes.forEach((vote) => {
       const name = String(vote.candidate?.name ?? "Unknown").trim() || "Unknown";
       const existing = totals.get(name) ?? { name, votes: 0, points: 0 };
       const points = vote.points ?? vote.voter?.vote_points ?? 0;
@@ -160,7 +161,28 @@ export default function AdminVotesClient({ electionId }: Props) {
       if (right.votes !== left.votes) return right.votes - left.votes;
       return left.name.localeCompare(right.name);
     });
-  }, [visibleVotes]);
+  }, [votes]);
+
+  const topCandidates = useMemo(() => candidateTotals.slice(0, 2), [candidateTotals]);
+
+  const domainTotals = useMemo(() => {
+    const totals = new Map<string, { domain: string; totalPoints: number; candidatePoints: Record<string, number> }>();
+
+    votes.forEach((vote) => {
+      const domain = String(vote.voter?.domain ?? "Unknown").trim() || "Unknown";
+      const candidate = String(vote.candidate?.name ?? "Unknown").trim() || "Unknown";
+      const points = vote.points ?? vote.voter?.vote_points ?? 0;
+      const existing = totals.get(domain) ?? { domain, totalPoints: 0, candidatePoints: {} };
+      existing.totalPoints += points;
+      existing.candidatePoints[candidate] = (existing.candidatePoints[candidate] ?? 0) + points;
+      totals.set(domain, existing);
+    });
+
+    return Array.from(totals.values()).sort((left, right) => {
+      if (right.totalPoints !== left.totalPoints) return right.totalPoints - left.totalPoints;
+      return left.domain.localeCompare(right.domain);
+    });
+  }, [votes]);
 
   const exportCsv = () => {
     const header = [
@@ -221,71 +243,133 @@ export default function AdminVotesClient({ electionId }: Props) {
 
       {error ? <div className="mb-4 rounded-2xl border border-red-300/70 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
-      <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Registered Voters</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{stats.registeredVoters}</p>
-          </div>
-          <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Participated Voters</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{stats.participatedVoters}</p>
-          </div>
-          <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Candidates</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{stats.uniqueCandidates}</p>
-          </div>
-          <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Total Points</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{stats.totalPoints}</p>
-          </div>
-          <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4 md:col-span-2 xl:col-span-2">
-            <button className="rounded-xl bg-charcoal px-4 py-2 text-sm font-semibold text-cream" onClick={exportCsv}>
-              Export CSV
-            </button>
-          </div>
-        </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${activeTab === "responses" ? "bg-charcoal text-cream" : "border border-charcoal/20 bg-white/80 text-charcoal"}`}
+          onClick={() => setActiveTab("responses")}
+        >
+          Responses
+        </button>
+        <button
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${activeTab === "analytics" ? "bg-charcoal text-cream" : "border border-charcoal/20 bg-white/80 text-charcoal"}`}
+          onClick={() => setActiveTab("analytics")}
+        >
+          Analytics
+        </button>
       </div>
 
-      <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-ink">Candidate Totals</h2>
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/55">
-              Totals respect current filters
-            </p>
+      {activeTab === "analytics" ? (
+        <>
+          <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
+            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Registered Voters</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">{stats.registeredVoters}</p>
+              </div>
+              <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Participated Voters</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">{stats.participatedVoters}</p>
+              </div>
+              <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Candidates</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">{stats.uniqueCandidates}</p>
+              </div>
+              <div className="rounded-2xl border border-charcoal/10 bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Total Points</p>
+                <p className="mt-1 text-2xl font-semibold text-ink">{stats.totalPoints}</p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {candidateTotals.length ? (
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-charcoal/10 bg-white/80">
-            <table className="min-w-[520px] w-full text-left text-sm">
-              <thead className="bg-charcoal/5 text-xs uppercase tracking-[0.16em] text-ink/55">
-                <tr>
-                  <th className="px-4 py-3">Candidate</th>
-                  <th className="px-4 py-3">Votes</th>
-                  <th className="px-4 py-3">Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidateTotals.map((candidate) => (
-                  <tr key={candidate.name} className="border-t border-charcoal/10">
-                    <td className="px-4 py-3 font-semibold text-ink">{candidate.name}</td>
-                    <td className="px-4 py-3 text-ink/70">{candidate.votes}</td>
-                    <td className="px-4 py-3 font-semibold text-ink">{candidate.points}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-charcoal/10 bg-white/80 p-4 text-sm text-ink/60">
-            No votes yet for this election.
-          </div>
-        )}
-      </div>
+          <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Candidate Totals</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">All votes</p>
+              </div>
+            </div>
 
-      <div className="glass-panel rounded-2xl p-4 md:p-6">
+            {candidateTotals.length ? (
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-charcoal/10 bg-white/80">
+                <table className="min-w-[520px] w-full text-left text-sm">
+                  <thead className="bg-charcoal/5 text-xs uppercase tracking-[0.16em] text-ink/55">
+                    <tr>
+                      <th className="px-4 py-3">Candidate</th>
+                      <th className="px-4 py-3">Votes</th>
+                      <th className="px-4 py-3">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidateTotals.map((candidate) => (
+                      <tr key={candidate.name} className="border-t border-charcoal/10">
+                        <td className="px-4 py-3 font-semibold text-ink">{candidate.name}</td>
+                        <td className="px-4 py-3 text-ink/70">{candidate.votes}</td>
+                        <td className="px-4 py-3 font-semibold text-ink">{candidate.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-charcoal/10 bg-white/80 p-4 text-sm text-ink/60">
+                No votes yet for this election.
+              </div>
+            )}
+          </div>
+
+          <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Domain Points</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">Total + top candidates</p>
+              </div>
+            </div>
+
+            {domainTotals.length ? (
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-charcoal/10 bg-white/80">
+                <table className="min-w-[720px] w-full text-left text-sm">
+                  <thead className="bg-charcoal/5 text-xs uppercase tracking-[0.16em] text-ink/55">
+                    <tr>
+                      <th className="px-4 py-3">Domain</th>
+                      <th className="px-4 py-3">Total Points</th>
+                      <th className="px-4 py-3">{topCandidates[0]?.name ?? "Candidate 1"} Points</th>
+                      <th className="px-4 py-3">{topCandidates[1]?.name ?? "Candidate 2"} Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {domainTotals.map((domain) => (
+                      <tr key={domain.domain} className="border-t border-charcoal/10">
+                        <td className="px-4 py-3 font-semibold text-ink">{domain.domain}</td>
+                        <td className="px-4 py-3 text-ink/70">{domain.totalPoints}</td>
+                        <td className="px-4 py-3 text-ink/70">{domain.candidatePoints[topCandidates[0]?.name ?? ""] ?? 0}</td>
+                        <td className="px-4 py-3 text-ink/70">{domain.candidatePoints[topCandidates[1]?.name ?? ""] ?? 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-charcoal/10 bg-white/80 p-4 text-sm text-ink/60">
+                No domain data available yet.
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="glass-panel mb-4 rounded-2xl p-4 md:p-6">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Vote Responses</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/55">All submitted votes</p>
+              </div>
+              <button className="rounded-xl bg-charcoal px-4 py-2 text-sm font-semibold text-cream" onClick={exportCsv}>
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div className="glass-panel rounded-2xl p-4 md:p-6">
         <div className="mb-4 grid gap-3 xl:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink/55">
             Search
@@ -406,7 +490,9 @@ export default function AdminVotesClient({ electionId }: Props) {
             No votes match the current search or filters.
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
