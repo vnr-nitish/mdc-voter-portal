@@ -15,8 +15,12 @@ type DashboardPayload = {
   elections: ElectionRow[];
 };
 
-export default function AdminDashboardOverview() {
-  const [payload, setPayload] = useState<DashboardPayload | null>(null);
+type Props = {
+  initialPayload: DashboardPayload;
+};
+
+export default function AdminDashboardOverview({ initialPayload }: Props) {
+  const [payload, setPayload] = useState<DashboardPayload | null>(initialPayload);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [electionForm, setElectionForm] = useState({
@@ -38,10 +42,6 @@ export default function AdminDashboardOverview() {
       setError(err instanceof Error ? err.message : "Unexpected error.");
     }
   };
-
-  useEffect(() => {
-    refreshElections();
-  }, []);
 
   const handleCreateElection = async () => {
     if (!electionForm.title.trim()) {
