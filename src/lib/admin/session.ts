@@ -3,7 +3,6 @@ import "server-only";
 import crypto from "crypto";
 import { env, requireEnv } from "../env";
 
-const secret = requireEnv(env.adminSessionSecret, "ADMIN_SESSION_SECRET");
 const cookieName = "mdc_admin_session";
 
 export type AdminSession = {
@@ -12,6 +11,7 @@ export type AdminSession = {
 };
 
 const sign = (payload: AdminSession) => {
+  const secret = requireEnv(env.adminSessionSecret, "ADMIN_SESSION_SECRET");
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const signature = crypto
     .createHmac("sha256", secret)
@@ -21,6 +21,11 @@ const sign = (payload: AdminSession) => {
 };
 
 const verify = (token: string) => {
+  const secret = env.adminSessionSecret;
+  if (!secret) {
+    return null;
+  }
+
   const [encoded, signature] = token.split(".");
   if (!encoded || !signature) {
     return null;
