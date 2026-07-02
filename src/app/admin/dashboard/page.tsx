@@ -4,25 +4,6 @@ import AdminDashboardOverview from "@/components/admin-dashboard-overview";
 import { adminSessionCookie, verifyAdminSession } from "@/lib/admin/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-const dedupeElections = <T extends { title: string; created_at: string }>(items: T[]) =>
-  items.reduce<T[]>((accumulator, election) => {
-    const normalizedTitle = election.title.trim().toLowerCase();
-    const existingIndex = accumulator.findIndex(
-      (item) => item.title.trim().toLowerCase() === normalizedTitle
-    );
-
-    if (existingIndex >= 0) {
-      const existing = accumulator[existingIndex];
-      if (new Date(election.created_at).getTime() > new Date(existing.created_at).getTime()) {
-        accumulator[existingIndex] = election;
-      }
-      return accumulator;
-    }
-
-    accumulator.push(election);
-    return accumulator;
-  }, []);
-
 export default async function AdminDashboardPage() {
   const store = await cookies();
   const token = store.get(adminSessionCookie.name)?.value;
@@ -39,7 +20,7 @@ export default async function AdminDashboardPage() {
     .order("created_at", { ascending: false });
 
   const initialPayload = {
-    elections: dedupeElections(data ?? []),
+    elections: data ?? [],
   };
 
   return (

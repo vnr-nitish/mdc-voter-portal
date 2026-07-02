@@ -3,25 +3,6 @@ import { cookies } from "next/headers";
 import { adminSessionCookie, verifyAdminSession } from "@/lib/admin/session";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-const dedupeElections = <T extends { title: string; created_at: string }>(items: T[]) =>
-  items.reduce<T[]>((accumulator, election) => {
-    const normalizedTitle = election.title.trim().toLowerCase();
-    const existingIndex = accumulator.findIndex(
-      (item) => item.title.trim().toLowerCase() === normalizedTitle
-    );
-
-    if (existingIndex >= 0) {
-      const existing = accumulator[existingIndex];
-      if (new Date(election.created_at).getTime() > new Date(existing.created_at).getTime()) {
-        accumulator[existingIndex] = election;
-      }
-      return accumulator;
-    }
-
-    accumulator.push(election);
-    return accumulator;
-  }, []);
-
 const requireAdmin = async () => {
   const store = await cookies();
   const token = store.get(adminSessionCookie.name)?.value;
@@ -51,16 +32,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: electionsError.message }, { status: 500 });
     }
 
-    const uniqueElections = dedupeElections(elections ?? []);
+    const allElections = elections ?? [];
 
     const selectedElectionId =
-      requestedElectionId && uniqueElections.some((item) => item.id === requestedElectionId)
+      requestedElectionId && allElections.some((item) => item.id === requestedElectionId)
         ? requestedElectionId
         : null;
 
     if (!selectedElectionId) {
       return NextResponse.json({
-        elections: uniqueElections,
+        elections: allElections,
         selectedElectionId: null,
         voters: [],
         pendingRequests: [],
@@ -201,7 +182,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      elections: uniqueElections,
+      elections: allElections,
       selectedElectionId,
       voters: voters ?? [],
       pendingRequests: pendingRequests ?? [],
